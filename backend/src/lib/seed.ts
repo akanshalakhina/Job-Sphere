@@ -288,5 +288,41 @@ const SEED_OPPORTUNITIES = [
 ];
 
 export const seedDatabase = async (): Promise<void> => {
-  console.log("[Seed] Seeding disabled to keep database empty");
+  const [jobResults, postResults, opportunityResults] = await Promise.all([
+    Promise.all(
+      SEED_JOBS.map((job) =>
+        Job.updateOne(
+          { title: job.title, company: job.company },
+          { $setOnInsert: job },
+          { upsert: true },
+        ),
+      ),
+    ),
+    Promise.all(
+      SEED_POSTS.map((post) =>
+        Post.updateOne(
+          { content: post.content },
+          { $setOnInsert: post },
+          { upsert: true },
+        ),
+      ),
+    ),
+    Promise.all(
+      SEED_OPPORTUNITIES.map((opportunity) =>
+        Opportunity.updateOne(
+          { title: opportunity.title, organizer: opportunity.organizer },
+          { $setOnInsert: opportunity },
+          { upsert: true },
+        ),
+      ),
+    ),
+  ]);
+
+  const insertedJobs = jobResults.reduce((total, result) => total + Number(result.upsertedCount || 0), 0);
+  const insertedPosts = postResults.reduce((total, result) => total + Number(result.upsertedCount || 0), 0);
+  const insertedOpportunities = opportunityResults.reduce((total, result) => total + Number(result.upsertedCount || 0), 0);
+
+  console.log(
+    `[Seed] Shared Mongo data ready. Inserted missing records only: ${insertedJobs} jobs, ${insertedPosts} posts, ${insertedOpportunities} opportunities.`,
+  );
 };

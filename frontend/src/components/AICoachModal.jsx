@@ -11,6 +11,7 @@ export const AICoachModal = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const { apiFetch } = useAppState();
+  const minimumLoadingDelay = () => new Promise(resolve => setTimeout(resolve, 700));
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,6 +25,7 @@ export const AICoachModal = ({ isOpen, onClose }) => {
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
     setIsLoading(true);
+    const minimumDelay = minimumLoadingDelay();
 
     try {
       const history = messages.map(m => ({ sender: m.sender, text: m.text }));
@@ -44,6 +46,7 @@ export const AICoachModal = ({ isOpen, onClose }) => {
       const fallbackText = generateMockCoachResponse(userMsg.text);
       setMessages(prev => [...prev, { id: `ai-${Date.now()}`, sender: 'ai', text: fallbackText }]);
     } finally {
+      await minimumDelay;
       setIsLoading(false);
     }
   };
@@ -108,10 +111,14 @@ export const AICoachModal = ({ isOpen, onClose }) => {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-navy-900 text-slate-500 border border-slate-200/20 dark:border-navy-800 rounded-tl-none flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-60 p-3.5 rounded-2xl bg-slate-100 dark:bg-navy-900 text-slate-600 dark:text-slate-300 border border-slate-200/20 dark:border-navy-800 rounded-tl-none">
+                    <div className="flex items-center justify-between gap-3 text-[10px] font-bold">
+                      <span>AI Coach is preparing feedback</span>
+                      <span className="text-brand-500 dark:text-brand-400">Thinking</span>
+                    </div>
+                    <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-brand-500/10">
+                      <span className="ai-loading-bar absolute inset-y-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-brand-500 via-indigo-500 to-brand-400" />
+                    </div>
                   </div>
                 </div>
               )}

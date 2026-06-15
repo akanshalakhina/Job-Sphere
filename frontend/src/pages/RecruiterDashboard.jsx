@@ -160,7 +160,7 @@ export const RecruiterDashboard = () => {
     setActiveTab('pipeline');
   };
 
-  const handlePostJobSubmit = (e) => {
+  const handlePostJobSubmit = async (e) => {
     e.preventDefault();
     if (!jobTitle || !jobSkills || !jobDesc) {
       addToast("Please fill all job fields.", "error");
@@ -185,7 +185,12 @@ export const RecruiterDashboard = () => {
       }
     };
 
-    addPendingJob(packagedJob);
+    const result = await addPendingJob(packagedJob);
+    if (!result?.success) {
+      addToast(result?.error || "Unable to submit job opening.", "error");
+      return;
+    }
+
     addToast("Job opening sent to Admin Queue! Status: Awaiting Approval", "success");
 
     // Reset post fields

@@ -1,6 +1,7 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemini-flash-latest";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 15000);
 
 export type GeminiPart =
   | { text: string }
@@ -34,22 +35,31 @@ const generateContent = async (
     throw new Error("GEMINI_API_KEY not set");
   }
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      contents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens,
-      },
-    }),
-  });
+      signal: controller.signal,
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens,
+        },
+      }),
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

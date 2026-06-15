@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { ENV_ADMIN_USER_ID, getEnvAdminProfile, isEnvAdminLogin } from "../lib/envAdmin";
+import { isDBConnected } from "../lib/mongodb";
+import { createMemAuthUser, getMemUserByEmail } from "../lib/memoryDb";
 import { User } from "../models/User";
 import { JWT_SECRET } from "../middlewares/requireAuth";
 
@@ -22,6 +24,27 @@ router.post("/auth/signup", async (req: Request, res: Response): Promise<void> =
   }
 
   try {
+    if (!isDBConnected()) {
+      const existing = getMemUserByEmail(email);
+      if (existing) {
+        res.status(400).json({ error: "A user with this email already exists" });
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = createMemAuthUser({
+        ...rest,
+        email,
+        password: hashedPassword,
+        role,
+        name,
+      });
+      const token = jwt.sign({ userId: user.clerkId, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+
+      res.status(201).json({ token, user: sanitizeUser(user) });
+      return;
+    }
+
     const existing = await User.findOne({ email });
     if (existing) {
       res.status(400).json({ error: "A user with this email already exists" });
@@ -93,6 +116,24 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     if (isEnvAdminLogin(email, password)) {
       const token = jwt.sign({ userId: ENV_ADMIN_USER_ID, role: "admin" }, JWT_SECRET, { expiresIn: "7d" });
       res.json({ token, user: getEnvAdminProfile() });
+      return;
+    }
+
+    if (!isDBConnected()) {
+      const user = getMemUserByEmail(email);
+      if (!user || !user.password) {
+        res.status(401).json({ error: "Invalid email or password" });
+        return;
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        res.status(401).json({ error: "Invalid email or password" });
+        return;
+      }
+
+      const token = jwt.sign({ userId: user.clerkId, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+      res.json({ token, user: sanitizeUser(user) });
       return;
     }
 

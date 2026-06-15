@@ -21,6 +21,10 @@ export const ResumeAnalyzerPage = () => {
       addToast('Please upload a PDF or DOCX file.', 'error');
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      addToast('Please upload a resume under 10MB.', 'error');
+      return;
+    }
 
     setFileName(file.name);
     triggerScan(file);
@@ -47,6 +51,9 @@ export const ResumeAnalyzerPage = () => {
               setFileName('');
               return;
             }
+            if (result.analysis?.warning) {
+              addToast(result.analysis.warning, 'info', 5000);
+            }
             addToast('Resume scanned successfully!', 'success');
           }, 800);
         }
@@ -66,6 +73,7 @@ export const ResumeAnalyzerPage = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = React.useRef(null);
 
   // Initialize chat when resumeDetails changes
   React.useEffect(() => {
@@ -79,6 +87,10 @@ export const ResumeAnalyzerPage = () => {
       ]);
     }
   }, [resumeDetails, currentUser.name]);
+
+  React.useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chatMessages, isTyping]);
 
   const handleSendChat = (text) => {
     if (!text.trim() || isTyping) return;
@@ -165,7 +177,7 @@ To resolve this:
           <div>
             <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white">Drop your PDF or DOCX file here</h4>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
-              Drag-and-drop or browse files locally. Make sure file is under 5MB and uses transparent layouts.
+              Drag-and-drop or browse files locally. Make sure file is under 10MB and uses selectable text when possible.
             </p>
           </div>
           <button className="px-5 py-2.5 rounded-xl bg-brand-600 group-hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-500/10 transition-all mt-2">
@@ -314,13 +326,18 @@ To resolve this:
                 {isTyping && (
                   <div className="self-start flex flex-col items-start max-w-[85%]">
                     <span className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">SphereAI</span>
-                    <div className="p-3 bg-slate-100 dark:bg-navy-950 text-slate-500 rounded-2xl rounded-tl-none border border-slate-200/40 dark:border-navy-800 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-slate-500 dark:bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-500 dark:bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-500 dark:bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-56 p-3 bg-slate-100 dark:bg-navy-950 text-slate-600 dark:text-slate-300 rounded-2xl rounded-tl-none border border-slate-200/40 dark:border-navy-800">
+                      <div className="flex items-center justify-between gap-3 text-[10px] font-bold">
+                        <span>Analyzing reply</span>
+                        <span className="text-brand-500 dark:text-brand-400">Working</span>
+                      </div>
+                      <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-brand-500/10">
+                        <span className="ai-loading-bar absolute inset-y-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-brand-500 via-indigo-500 to-brand-400" />
+                      </div>
                     </div>
                   </div>
                 )}
+                <div ref={chatEndRef} />
               </div>
 
               {/* Suggestions chips */}
@@ -333,7 +350,8 @@ To resolve this:
                   <button
                     key={i}
                     onClick={() => handleSendChat(chip.query)}
-                    className="text-[9px] font-bold px-2.5 py-1.5 rounded-full bg-slate-50 hover:bg-brand-500/10 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                    disabled={isTyping}
+                    className="text-[9px] font-bold px-2.5 py-1.5 rounded-full bg-slate-50 hover:bg-brand-500/10 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {chip.label}
                   </button>

@@ -1,25 +1,20 @@
-import { Router, type Request } from "express";
-import { getRequestUserId, requireDbRole } from "../middlewares/requireAuth";
-import { isEnvAdminUserId } from "../lib/envAdmin";
+import { Router } from "express";
+import { requireDbRole } from "../middlewares/requireAuth";
 import { Job } from "../models/Job";
 import { User } from "../models/User";
 import { Application } from "../models/Application";
 import { Post } from "../models/Post";
 import { isDBConnected } from "../lib/mongodb";
+import { getMemAdminStats, getMemCompanies, getMemPendingJobs, setMemJobStatus } from "../lib/memoryDb";
 
 const router = Router();
 const adminOnly = requireDbRole("admin");
-
-const isEnvAdminRequest = (req: Request): boolean =>
-  isEnvAdminUserId(getRequestUserId(req));
+const paramToString = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
 
 router.get("/admin/pending-jobs", adminOnly, async (req, res) => {
-  if (isEnvAdminRequest(req)) {
-    res.json([]);
-    return;
-  }
   if (!isDBConnected()) {
-    res.json([]);
+    res.json(getMemPendingJobs());
     return;
   }
   try {
@@ -31,13 +26,19 @@ router.get("/admin/pending-jobs", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/jobs/:id/approve", adminOnly, async (req, res) => {
+  const jobId = paramToString(req.params.id);
   if (!isDBConnected()) {
-    res.status(503).json({ error: "Database not connected" });
+    const job = setMemJobStatus(jobId, "approved");
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    res.json(job);
     return;
   }
   try {
     const job = await Job.findByIdAndUpdate(
-      req.params.id,
+      jobId,
       { $set: { status: "approved" } },
       { new: true }
     );
@@ -48,13 +49,19 @@ router.post("/admin/jobs/:id/approve", adminOnly, async (req, res) => {
 });
 
 router.post("/admin/jobs/:id/reject", adminOnly, async (req, res) => {
+  const jobId = paramToString(req.params.id);
   if (!isDBConnected()) {
-    res.status(503).json({ error: "Database not connected" });
+    const job = setMemJobStatus(jobId, "rejected");
+    if (!job) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
+    res.json(job);
     return;
   }
   try {
     const job = await Job.findByIdAndUpdate(
-      req.params.id,
+      jobId,
       { $set: { status: "rejected" } },
       { new: true }
     );
@@ -65,24 +72,8 @@ router.post("/admin/jobs/:id/reject", adminOnly, async (req, res) => {
 });
 
 router.get("/admin/stats", adminOnly, async (req, res) => {
-  if (isEnvAdminRequest(req)) {
-    res.json({
-      totalUsers: 0,
-      totalJobs: 0,
-      totalApplications: 0,
-      totalPosts: 0,
-      pendingJobs: 0,
-    });
-    return;
-  }
   if (!isDBConnected()) {
-    res.json({
-      totalUsers: 0,
-      totalJobs: 0,
-      totalApplications: 0,
-      totalPosts: 0,
-      pendingJobs: 0,
-    });
+    res.json(getMemAdminStats());
     return;
   }
   try {
@@ -101,12 +92,8 @@ router.get("/admin/stats", adminOnly, async (req, res) => {
 });
 
 router.get("/admin/companies", adminOnly, async (req, res) => {
-  if (isEnvAdminRequest(req)) {
-    res.json({ companies: [] });
-    return;
-  }
   if (!isDBConnected()) {
-    res.json([]);
+    res.json({ companies: getMemCompanies() });
     return;
   }
   try {

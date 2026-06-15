@@ -505,7 +505,9 @@ export const AppStateProvider = ({ children }) => {
               skills: analysis.skills,
               missingKeywords: analysis.missingKeywords,
               improvements: analysis.improvements,
-              summary: analysis.summary
+              summary: analysis.summary,
+              analyzedWith: analysis.analyzedWith,
+              warning: analysis.warning,
             }
           }));
           return { success: true, analysis };
@@ -570,10 +572,16 @@ export const AppStateProvider = ({ children }) => {
           description: job.description, responsibilities: job.responsibilities || []
         })
       });
-      if (res.ok) { fetchBackendData(); return; }
+      if (res.ok) {
+        const createdJob = await res.json();
+        fetchBackendData();
+        return { success: true, job: { ...createdJob, id: createdJob._id } };
+      }
+      return await parseApiResponse(res);
     } catch (err) {
       console.error('Failed to post job:', err);
     }
+    return { success: false, error: 'Unable to submit job right now.' };
   };
 
   const approveJob = async (jobId) => {

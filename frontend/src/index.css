@@ -81,6 +81,22 @@
   animation: shimmer 2s infinite;
 }
 
+@keyframes ai-loading-bar {
+  0% {
+    transform: translateX(-120%);
+  }
+  55% {
+    transform: translateX(80%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+.ai-loading-bar {
+  animation: ai-loading-bar 1.15s ease-in-out infinite;
+}
+
 @media print {
   @page {
     size: A4;

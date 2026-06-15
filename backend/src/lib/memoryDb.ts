@@ -31,6 +31,60 @@ export function getMemUser(userId: string) {
   return memoryUsers.find(u => u.clerkId === userId) || null;
 }
 
+export function getMemUserByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return memoryUsers.find(u => String(u.email || "").toLowerCase() === normalizedEmail) || null;
+}
+
+export function createMemAuthUser(body: any) {
+  const id = `usr_${Math.random().toString(36).substr(2, 9)}`;
+  const allowedRoles = ["candidate", "recruiter", "admin"];
+  const safeRole = allowedRoles.includes(body.role) ? body.role : "candidate";
+
+  const parseList = (value: unknown) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      return value.split(",").map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const user = {
+    _id: id,
+    clerkId: id,
+    email: body.email,
+    password: body.password,
+    role: safeRole,
+    name: body.name || "Anonymous User",
+    onboarded: true,
+    savedJobs: [],
+    skills: parseList(body.skills),
+    softSkills: parseList(body.softSkills),
+    experience: body.experience || "",
+    resumeUrl: body.resume || body.resumeUrl || "",
+    graduationYear: body.graduationYear || "",
+    college: body.college || "",
+    degree: body.degree || "",
+    avatar: body.avatar || "",
+    companyName: body.companyName || "",
+    company: body.companyName || body.company || "",
+    industry: body.industry || "",
+    companySize: body.companySize || "",
+    logo: body.logo || "",
+    website: body.website || "",
+    description: body.description || "",
+    bio: body.description || body.bio || "",
+    atsScore: 75,
+    profileViews: 0,
+    postImpressions: 0,
+    viewedTags: [],
+    createdAt: new Date().toISOString(),
+  };
+
+  memoryUsers.push(user);
+  return user;
+}
+
 export function syncMemUser(userId: string, body: any) {
   let user = memoryUsers.find(u => u.clerkId === userId);
   if (!user) {
@@ -177,6 +231,38 @@ export function createMemJob(jobData: any, userId: string, recruiterUser: any) {
   };
   memoryJobs.push(newJob);
   return newJob;
+}
+
+export function getMemPendingJobs() {
+  return memoryJobs
+    .filter(j => j.status === "pending")
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+export function setMemJobStatus(id: string, status: "approved" | "rejected") {
+  const job = memoryJobs.find(j => j._id === id);
+  if (!job) return null;
+  job.status = status;
+  return job;
+}
+
+export function getMemAdminStats() {
+  return {
+    totalUsers: memoryUsers.length,
+    totalJobs: memoryJobs.filter(j => j.status === "approved" || j.status === undefined).length,
+    totalApplications: memoryApplications.length,
+    totalPosts: 0,
+    pendingJobs: memoryJobs.filter(j => j.status === "pending").length,
+  };
+}
+
+export function getMemCompanies() {
+  const companies = memoryUsers
+    .filter(u => u.role === "recruiter")
+    .map(u => u.companyName || u.company)
+    .filter(Boolean);
+
+  return Array.from(new Set(companies)).map(name => ({ name, verified: false }));
 }
 
 export function updateMemJob(id: string, userId: string, body: any, isAdmin: boolean) {

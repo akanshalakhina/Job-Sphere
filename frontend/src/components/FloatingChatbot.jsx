@@ -9,6 +9,7 @@ export const FloatingChatbot = () => {
   const [isTyping, setIsTyping] = useState(false);
   const { chatbotMessages, sendChatbotMessage } = useAppState();
   const chatEndRef = useRef(null);
+  const minimumLoadingDelay = () => new Promise(resolve => setTimeout(resolve, 700));
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -23,18 +24,23 @@ export const FloatingChatbot = () => {
     setInputText('');
     
     setIsTyping(true);
+    const minimumDelay = minimumLoadingDelay();
     try {
       await sendChatbotMessage(text);
     } finally {
+      await minimumDelay;
       setIsTyping(false);
     }
   };
 
   const handleQuickQuestion = async (text) => {
+    if (isTyping) return;
     setIsTyping(true);
+    const minimumDelay = minimumLoadingDelay();
     try {
       await sendChatbotMessage(text);
     } finally {
+      await minimumDelay;
       setIsTyping(false);
     }
   };
@@ -101,10 +107,14 @@ export const FloatingChatbot = () => {
 
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-navy-900 text-slate-500 border border-slate-200/20 dark:border-navy-800 rounded-tl-none flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-56 p-3.5 rounded-2xl bg-slate-100 dark:bg-navy-900 text-slate-600 dark:text-slate-300 border border-slate-200/20 dark:border-navy-800 rounded-tl-none">
+                    <div className="flex items-center justify-between gap-3 text-[10px] font-bold">
+                      <span>SphereAI is typing</span>
+                      <span className="text-brand-500 dark:text-brand-400">Live</span>
+                    </div>
+                    <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-brand-500/10">
+                      <span className="ai-loading-bar absolute inset-y-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-brand-500 via-indigo-500 to-brand-400" />
+                    </div>
                   </div>
                 </div>
               )}
@@ -117,7 +127,8 @@ export const FloatingChatbot = () => {
                 <button
                   key={pill}
                   onClick={() => handleQuickQuestion(pill)}
-                  className="text-[10px] font-semibold px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-navy-800 bg-white dark:bg-navy-900 text-slate-600 dark:text-slate-300 hover:border-brand-500 dark:hover:border-brand-400 hover:text-brand-500 transition-all whitespace-nowrap flex-shrink-0"
+                  disabled={isTyping}
+                  className="text-[10px] font-semibold px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-navy-800 bg-white dark:bg-navy-900 text-slate-600 dark:text-slate-300 hover:border-brand-500 dark:hover:border-brand-400 hover:text-brand-500 transition-all whitespace-nowrap flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {pill}
                 </button>
@@ -134,11 +145,13 @@ export const FloatingChatbot = () => {
                 placeholder="Ask me anything..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                className="flex-1 bg-slate-50/50 dark:bg-navy-900/50 border border-slate-200 dark:border-navy-800 text-xs px-3.5 py-2.5 rounded-xl outline-none text-slate-800 dark:text-slate-200 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
+                disabled={isTyping}
+                className="flex-1 bg-slate-50/50 dark:bg-navy-900/50 border border-slate-200 dark:border-navy-800 text-xs px-3.5 py-2.5 rounded-xl outline-none text-slate-800 dark:text-slate-200 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 disabled:opacity-50"
               />
               <button
                 type="submit"
-                className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 transition-colors flex items-center justify-center shadow-md shadow-brand-500/10"
+                disabled={isTyping || !inputText.trim()}
+                className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 transition-colors flex items-center justify-center shadow-md shadow-brand-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
               </button>

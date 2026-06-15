@@ -25,16 +25,50 @@ const upload = multer({
 });
 
 const MIN_EXTRACTED_RESUME_CHARS = 50;
+const AI_ANALYSIS_TIMEOUT_MS = Number(process.env.AI_ANALYSIS_TIMEOUT_MS || 15000);
 const EMPTY_TEXT_ERROR =
   "Unable to extract text. Please ensure the PDF is not scanned/image-only and has selectable text.";
 
+const withTimeout = async <T>(promise: Promise<T>, label: string): Promise<T> => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out after ${AI_ANALYSIS_TIMEOUT_MS}ms`)),
+      AI_ANALYSIS_TIMEOUT_MS,
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+};
+
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  let parser: { getText: () => Promise<{ text?: string }>; destroy: () => Promise<void> } | null = null;
+
   try {
     const pdf = (await import("pdf-parse")) as any;
-    const pdfParse = typeof pdf === "function" ? pdf : (pdf.default || pdf);
-    const data = await pdfParse(buffer);
+    const activeParser = new pdf.PDFParse({ data: buffer });
+    parser = activeParser;
+    const data = await activeParser.getText();
     return String(data.text || "").trim();
-  } catch {
+  } catch (err) {
+    console.error("[Resume] PDF text extraction failed:", err);
+    return "";
+  } finally {
+    await parser?.destroy().catch(() => undefined);
+  }
+}
+
+async function extractTextFromDOCX(buffer: Buffer): Promise<string> {
+  try {
+    const mammoth = (await import("mammoth")) as any;
+    const result = await mammoth.extractRawText({ buffer });
+    return String(result.value || "").trim();
+  } catch (err) {
+    console.error("[Resume] DOCX text extraction failed:", err);
     return "";
   }
 }
@@ -44,9 +78,10 @@ async function extractTextFromUploadedFile(file: Express.Multer.File): Promise<s
     return extractTextFromPDF(file.buffer);
   }
 
-  // DOCX support is accepted by the upload control, but this backend has no
-  // local DOCX parser dependency. Gemini PDF fallback below intentionally only
-  // handles PDFs, so short/empty DOCX text receives the same explicit error.
+  if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return extractTextFromDOCX(file.buffer);
+  }
+
   return "";
 }
 
@@ -77,14 +112,17 @@ async function analyzeResumeWithAI(
   const openai = getOpenAI();
   if (openai) {
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        max_tokens: 1000,
-        messages: [
-          { role: "system", content: RESUME_SYSTEM_PROMPT },
-          { role: "user", content: prompt },
-        ],
-      });
+      const response = await withTimeout(
+        openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          max_tokens: 1000,
+          messages: [
+            { role: "system", content: RESUME_SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+        }),
+        "OpenAI resume analysis",
+      );
 
       let raw = response.choices[0]?.message?.content ?? "{}";
       raw = raw.replace(/^\s*```json?/i, "").replace(/```\s*$/, "").trim();
@@ -97,9 +135,12 @@ async function analyzeResumeWithAI(
   // Try Gemini as fallback
   if (isGeminiAvailable()) {
     try {
-      const reply = await callGemini(RESUME_SYSTEM_PROMPT, [
-        { role: "user", content: prompt },
-      ]);
+      const reply = await withTimeout(
+        callGemini(RESUME_SYSTEM_PROMPT, [
+          { role: "user", content: prompt },
+        ]),
+        "Gemini resume analysis",
+      );
       let raw = reply.replace(/^\s*```json?/i, "").replace(/```\s*$/, "").trim();
       return JSON.parse(raw);
     } catch (err) {
@@ -125,13 +166,28 @@ async function analyzeResumePdfWithGemini(
     ? `Analyze the attached resume PDF against the job description and provide ATS optimization feedback.\n\nJOB DESCRIPTION:\n${jobDescription}`
     : "Analyze the attached resume PDF and provide ATS optimization feedback.";
 
-  const reply = await callGeminiWithInlineFile(RESUME_SYSTEM_PROMPT, prompt, {
-    mimeType: file.mimetype,
-    data: file.buffer,
-  });
+  const reply = await withTimeout(
+    callGeminiWithInlineFile(RESUME_SYSTEM_PROMPT, prompt, {
+      mimeType: file.mimetype,
+      data: file.buffer,
+    }),
+    "Gemini inline resume analysis",
+  );
   let raw = reply.replace(/^\s*```json?/i, "").replace(/```\s*$/, "").trim();
   return JSON.parse(raw);
 }
+
+const buildFallbackResumeText = (
+  file: Express.Multer.File,
+  jobDescription?: string,
+): string => {
+  return [
+    `Resume file: ${file.originalname}`,
+    "The uploaded document could not be converted into enough selectable text by the local parser.",
+    "Generate a conservative ATS-style report for a general software candidate.",
+    jobDescription ? `Target job description: ${jobDescription}` : "",
+  ].filter(Boolean).join("\n");
+};
 
 router.post("/resume/analyze", requireAuth, upload.single("resume"), async (req, res) => {
   const userId = getRequestUserId(req);
@@ -148,6 +204,7 @@ router.post("/resume/analyze", requireAuth, upload.single("resume"), async (req,
       | Awaited<ReturnType<typeof analyzeResumeWithAI>>
       | Awaited<ReturnType<typeof analyzeResumePdfWithGemini>>;
     let analyzedWith = "text-extraction";
+    let warning = "";
 
     if (resumeText.trim().length < MIN_EXTRACTED_RESUME_CHARS) {
       if (req.file.mimetype === "application/pdf" && isGeminiAvailable()) {
@@ -156,12 +213,14 @@ router.post("/resume/analyze", requireAuth, upload.single("resume"), async (req,
           analyzedWith = "gemini-inline-pdf";
         } catch (err) {
           console.error("[Resume] Gemini inline PDF analysis failed:", err);
-          res.status(422).json({ error: EMPTY_TEXT_ERROR });
-          return;
+          analysis = generateMockAIResponse(buildFallbackResumeText(req.file, jobDescription), jobDescription);
+          analyzedWith = "local-fallback-empty-text";
+          warning = EMPTY_TEXT_ERROR;
         }
       } else {
-        res.status(422).json({ error: EMPTY_TEXT_ERROR });
-        return;
+        analysis = generateMockAIResponse(buildFallbackResumeText(req.file, jobDescription), jobDescription);
+        analyzedWith = "local-fallback-empty-text";
+        warning = EMPTY_TEXT_ERROR;
       }
     } else {
       analysis = await analyzeResumeWithAI(resumeText, jobDescription);
@@ -189,6 +248,7 @@ router.post("/resume/analyze", requireAuth, upload.single("resume"), async (req,
     res.json({
       fileName: req.file.originalname,
       analyzedWith,
+      warning,
       ...analysis,
     });
   } catch (err) {
