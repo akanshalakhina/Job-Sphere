@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { isDBConnected } from "../lib/mongodb";
+import { submitMemContact, subscribeMemNewsletter } from "../lib/memoryDb";
 import { sendTransactionalEmail, SUPPORT_EMAIL } from "../lib/email";
 import { ContactMessage } from "../models/ContactMessage";
 import { NewsletterSubscriber } from "../models/NewsletterSubscriber";

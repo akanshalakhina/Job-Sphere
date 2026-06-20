@@ -5,6 +5,7 @@ let memoryUsers: any[] = [];
 let memoryJobs: any[] = [];
 let memoryApplications: any[] = [];
 let memoryInterviews: any[] = [];
+let memoryRankings: any[] = [];
 
 // Initialize memoryJobs with 24-character hex ObjectIDs
 const ID_PREFIX = "60d5ec49e29a9a3b68c3ef";
@@ -519,3 +520,104 @@ export function deleteMemInterview(id: string, userId: string, isAdmin: boolean)
   memoryInterviews.splice(interviewIndex, 1);
   return { success: true };
 }
+
+// Rankings
+export function getMemRankings(jobId: string) {
+  return memoryRankings.filter(r => r.job === jobId);
+}
+
+export function upsertMemRanking(jobId: string, appId: string, data: any) {
+  const existingIndex = memoryRankings.findIndex(r => r.job === jobId && r.application === appId);
+  if (existingIndex >= 0) {
+    memoryRankings[existingIndex] = { ...memoryRankings[existingIndex], ...data };
+    return memoryRankings[existingIndex];
+  }
+  const newRanking = { 
+    _id: "rnk_" + Math.random().toString(36).substr(2, 9), 
+    job: jobId, 
+    application: appId, 
+    ...data 
+  };
+  memoryRankings.push(newRanking);
+  return newRanking;
+}
+
+export function getMemRankingById(rankingId: string) {
+  return memoryRankings.find(r => String(r._id) === rankingId);
+}
+
+export function updateMemRankingShortlist(rankingId: string, accepted: boolean) {
+  const ranking = memoryRankings.find(r => String(r._id) === rankingId);
+  if (ranking) {
+    ranking.shortlistAccepted = accepted;
+  }
+  return ranking;
+}
+
+// --- Posts Fallback ---
+const memoryPosts: any[] = [];
+export function getMemPosts() { return memoryPosts; }
+export function createMemPost(post: any) { memoryPosts.push(post); return post; }
+export function toggleMemPostLike(postId: string, userId: string) {
+  const post = memoryPosts.find(p => String(p._id) === postId);
+  if (!post) return null;
+  const hasLiked = post.likes.includes(userId);
+  if (hasLiked) {
+    post.likes = post.likes.filter((id: string) => id !== userId);
+    post.likesCount = Math.max(0, post.likesCount - 1);
+  } else {
+    post.likes.push(userId);
+    post.likesCount += 1;
+  }
+  return { liked: !hasLiked, likesCount: post.likesCount };
+}
+export function addMemPostComment(postId: string, comment: any) {
+  const post = memoryPosts.find(p => String(p._id) === postId);
+  if (!post) return null;
+  post.comments.push(comment);
+  return post;
+}
+export function getMemTrendingTags() {
+  return [
+    { tag: "#hiring", posts: 42, impressions: 1200, mlWeight: 85, signal: "post_hashtag_frequency" },
+    { tag: "#react", posts: 38, impressions: 900, mlWeight: 75, signal: "post_hashtag_frequency" }
+  ];
+}
+
+// --- Opportunities Fallback ---
+const memoryOpportunities: any[] = [];
+export function getMemOpportunities(type?: string) {
+  if (type && type !== "all") {
+    return memoryOpportunities.filter(o => o.type === type);
+  }
+  return memoryOpportunities;
+}
+export function registerMemOpportunity(oppId: string, userId: string) {
+  const opp = memoryOpportunities.find(o => String(o._id) === oppId);
+  if (!opp) return null;
+  if (opp.registeredUsers.includes(userId)) return "Already registered";
+  opp.registeredUsers.push(userId);
+  opp.registered += 1;
+  return opp;
+}
+
+// --- Interviews Fallback Removed from Appended Section ---
+
+// --- Chat Fallback ---
+const memoryChats: any[] = [];
+export function getMemChatHistory(userId: string) {
+  return memoryChats.filter(c => c.participants.includes(userId));
+}
+export function addMemChatMessage(chatId: string, message: any) {
+  let chat = memoryChats.find(c => String(c._id) === chatId);
+  if (!chat) {
+    chat = { _id: chatId, participants: [message.sender], messages: [] };
+    memoryChats.push(chat);
+  }
+  chat.messages.push(message);
+  return chat;
+}
+
+// --- Communications Fallback ---
+export function submitMemContact(data: any) { return { success: true, id: "msg_" + Date.now() }; }
+export function subscribeMemNewsletter(email: string) { return { success: true }; }

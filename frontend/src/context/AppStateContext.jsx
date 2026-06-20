@@ -643,6 +643,68 @@ export const AppStateProvider = ({ children }) => {
     uploadAndAnalyzeResume(`${data.personal?.name?.toLowerCase().replace(' ', '_') || 'user'}_resume.pdf`, score);
   };
 
+  // ── AI Ranking Engine ──────────────────────────────────────────────────
+  const generateRanking = async (jobId) => {
+    try {
+      const res = await apiFetch(`/api/jobs/${jobId}/generate-ranking`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return { success: true, ...data };
+      }
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err.error || 'Failed to generate rankings' };
+    } catch (err) {
+      console.error('Failed to generate ranking:', err);
+      return { success: false, error: 'Network error occurred' };
+    }
+  };
+
+  const fetchRankedCandidates = async (jobId, filters = {}) => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.sort) params.set('sort', filters.sort);
+      if (filters.recommendation) params.set('recommendation', filters.recommendation);
+      if (filters.minScore) params.set('minScore', String(filters.minScore));
+      if (filters.skill) params.set('skill', filters.skill);
+      if (filters.limit) params.set('limit', String(filters.limit));
+      if (filters.page) params.set('page', String(filters.page));
+
+      const qs = params.toString();
+      const url = `/api/jobs/${jobId}/ranked-candidates${qs ? `?${qs}` : ''}`;
+      const res = await apiFetch(url);
+      if (res.ok) {
+        return await res.json();
+      }
+      return { rankings: [], total: 0 };
+    } catch (err) {
+      console.error('Failed to fetch ranked candidates:', err);
+      return { rankings: [], total: 0 };
+    }
+  };
+
+  const handleShortlistDecision = async (jobId, rankingId, accepted) => {
+    try {
+      const res = await apiFetch(`/api/jobs/${jobId}/rankings/${rankingId}/shortlist`, {
+        method: 'PATCH',
+        body: JSON.stringify({ accepted }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (accepted) {
+          fetchBackendData(); // Refresh pipeline after stage change
+        }
+        return { success: true, ...data };
+      }
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err.error || 'Failed to update shortlist' };
+    } catch (err) {
+      console.error('Failed to update shortlist:', err);
+      return { success: false, error: 'Network error occurred' };
+    }
+  };
+
   return (
     <AppStateContext.Provider value={{
       userRole, setUserRole,
@@ -684,6 +746,10 @@ export const AppStateProvider = ({ children }) => {
       resumeBuilderData,
       saveResumeBuilderData,
       fetchBackendData,
+      // AI Ranking Engine
+      generateRanking,
+      fetchRankedCandidates,
+      handleShortlistDecision,
     }}>
       {children}
     </AppStateContext.Provider>
@@ -691,3 +757,4 @@ export const AppStateProvider = ({ children }) => {
 };
 
 export const useAppState = () => useContext(AppStateContext);
+

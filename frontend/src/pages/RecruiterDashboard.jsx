@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
   Users, FileCode, CheckCircle, Calendar, Plus, Mail, ChevronRight, 
   Check, Trash2, ArrowRight, ShieldCheck, Landmark, Edit3, Sparkles, AlertCircle,
-  Sliders, Award, Filter, Search
+  Sliders, Award, Filter, Search, Brain, Zap, TrendingUp, Star, ThumbsUp,
+  ThumbsDown, Target, BarChart3, Loader2, RefreshCw, ChevronDown, X
 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { useToast } from '../context/ToastContext';
@@ -12,11 +13,12 @@ import { ImageWithFallback } from '../components/ImageWithFallback';
 export const RecruiterDashboard = () => {
   const { 
     candidates, interviews, updateCandidateStage, 
-    scheduleInterview, addPendingJob, verifiedCompanies, currentUser
+    scheduleInterview, addPendingJob, verifiedCompanies, currentUser,
+    jobs, generateRanking, fetchRankedCandidates, handleShortlistDecision
   } = useAppState();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline', 'shortlist', 'schedule', 'postjob', 'branding'
+  const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline', 'shortlist', 'rankings', 'schedule', 'postjob', 'branding'
   
   // Schedule state
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
@@ -107,7 +109,7 @@ export const RecruiterDashboard = () => {
   const interviewingCount = candidates.filter(c => c.stage === 'Interviewing').length;
   const offeredCount = candidates.filter(c => c.stage === 'Offered').length;
 
-  const columns = ['Applied', 'Screening', 'Shortlisted', 'Interviewing', 'Offered'];
+  const columns = ['Applied', 'Screening', 'Interview', 'Offered'];
 
   const chartData = useMemo(() => {
     const skillCounts = new Map();
@@ -179,9 +181,9 @@ export const RecruiterDashboard = () => {
       description: jobDesc,
       responsibilities: ["Lead platform features designs", "Optimize load metrics"],
       recruiter: {
-        name: "Olivia Rhye",
+        name: currentUser?.name || "Recruiter",
         role: `Talent Sourcing at ${companyName}`,
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"
+        avatar: currentUser?.avatar || ""
       }
     };
 
@@ -256,6 +258,7 @@ export const RecruiterDashboard = () => {
           {[
             { id: 'pipeline', label: 'Pipeline Board' },
             { id: 'shortlist', label: 'Candidate Grid' },
+            { id: 'rankings', label: '✨ AI Rankings', highlight: true },
             { id: 'schedule', label: 'Book Interview' },
             { id: 'postjob', label: 'Post an Opening' },
             { id: 'branding', label: 'Employer Branding' }
@@ -265,8 +268,8 @@ export const RecruiterDashboard = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 lg:flex-initial px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
                 activeTab === tab.id
-                  ? 'bg-brand-500 text-white shadow'
-                  : 'text-slate-600 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-navy-800/40'
+                  ? tab.highlight ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-brand-500 text-white shadow'
+                  : tab.highlight ? 'text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-extrabold' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-navy-800/40'
               }`}
             >
               {tab.label}
@@ -281,7 +284,7 @@ export const RecruiterDashboard = () => {
           { label: "Total Sourced", value: totalApplicants, icon: Users, color: "bg-brand-500/10 text-brand-600" },
           { label: "Active Interviews", value: interviewingCount, icon: Calendar, color: "bg-indigo-500/10 text-indigo-500" },
           { label: "Offers Extended", value: offeredCount, icon: CheckCircle, color: "bg-emerald-500/10 text-emerald-500" },
-          { label: "Avg ATS Match", value: "92%", icon: FileCode, color: "bg-amber-500/10 text-amber-500" }
+          { label: "Avg ATS Match", value: candidates.length > 0 ? `${Math.round(candidates.reduce((sum, c) => sum + (c.atsScore || 0), 0) / candidates.length)}%` : '—', icon: FileCode, color: "bg-amber-500/10 text-amber-500" }
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -498,7 +501,7 @@ export const RecruiterDashboard = () => {
                               <p className="text-[9px] text-slate-500 mt-1">{cand.email}</p>
                             </div>
                           </td>
-                          <td className="p-3 text-xs font-bold text-slate-700 dark:text-slate-355">{cand.appliedFor}</td>
+                          <td className="p-3 text-xs font-bold text-slate-700 dark:text-slate-300">{cand.appliedFor}</td>
                           <td className="p-3 text-xs font-extrabold text-brand-500 text-center">{cand.atsScore}%</td>
                           <td className="p-3 text-center">
                             <span className="text-[9px] font-bold bg-brand-500/10 text-brand-600 dark:text-brand-400 px-2 py-0.5 rounded-full">{cand.stage}</span>
@@ -560,7 +563,7 @@ export const RecruiterDashboard = () => {
                               : rank === 2
                               ? 'bg-gradient-to-r from-slate-400/5 via-transparent to-transparent border-slate-400/30 dark:border-slate-400/20'
                               : rank === 3
-                              ? 'bg-gradient-to-r from-amber-750/5 via-transparent to-transparent border-amber-700/30 dark:border-amber-700/20'
+                               ? 'bg-gradient-to-r from-amber-700/5 via-transparent to-transparent border-amber-700/30 dark:border-amber-700/20'
                               : 'bg-white/40 dark:bg-navy-950/20 border-slate-200/70 dark:border-navy-800'
                           }`}
                         >
@@ -576,7 +579,7 @@ export const RecruiterDashboard = () => {
                                   🥈
                                 </div>
                               ) : rank === 3 ? (
-                                <div className="w-7 h-7 rounded-full bg-amber-700 text-white flex items-center justify-center font-black text-xs shadow-md shadow-amber-750/20">
+                                <div className="w-7 h-7 rounded-full bg-amber-700 text-white flex items-center justify-center font-black text-xs shadow-md shadow-amber-700/20">
                                   🥉
                                 </div>
                               ) : (
@@ -733,6 +736,15 @@ export const RecruiterDashboard = () => {
 
         </div>
       )}
+
+      {activeTab === 'rankings' && <AIRankingsTab
+        jobs={jobs}
+        currentUser={currentUser}
+        generateRanking={generateRanking}
+        fetchRankedCandidates={fetchRankedCandidates}
+        handleShortlistDecision={handleShortlistDecision}
+        addToast={addToast}
+      />}
 
       {activeTab === 'schedule' && (
         <div className="max-w-xl mx-auto w-full border border-slate-200/60 dark:border-navy-800/40 bg-white/70 dark:bg-navy-900/40 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-sm flex flex-col gap-6 text-left">
@@ -1046,6 +1058,511 @@ export const RecruiterDashboard = () => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// AI Rankings Tab — Extracted Component
+// ────────────────────────────────────────────────────────────────────────────
+
+const RECOMMENDATION_STYLES = {
+  'Highly Recommended': {
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/20',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    dot: 'bg-emerald-500',
+    icon: '🔥',
+  },
+  'Recommended': {
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/20',
+    text: 'text-blue-600 dark:text-blue-400',
+    dot: 'bg-blue-500',
+    icon: '⭐',
+  },
+  'Potential Match': {
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-500/20',
+    text: 'text-amber-600 dark:text-amber-400',
+    dot: 'bg-amber-500',
+    icon: '💡',
+  },
+  'Low Match': {
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/20',
+    text: 'text-red-500 dark:text-red-400',
+    dot: 'bg-red-500',
+    icon: '⚠️',
+  },
+};
+
+const ScoreBar = ({ label, score, color }) => (
+  <div className="flex flex-col gap-1">
+    <div className="flex justify-between items-center text-[9px] font-bold">
+      <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
+      <span className={`font-extrabold ${color}`}>{score}%</span>
+    </div>
+    <div className="w-full h-1.5 bg-slate-100 dark:bg-navy-800 rounded-full overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all duration-700 ease-out ${
+          score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-blue-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-400'
+        }`}
+        style={{ width: `${score}%` }}
+      />
+    </div>
+  </div>
+);
+
+const AIRankingsTab = ({ jobs, currentUser, generateRanking, fetchRankedCandidates, handleShortlistDecision, addToast }) => {
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [rankings, setRankings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [filterRec, setFilterRec] = useState('');
+  const [filterMinScore, setFilterMinScore] = useState(0);
+  const [sortBy, setSortBy] = useState('finalScore');
+  const [expandedCard, setExpandedCard] = useState(null);
+
+  // Get recruiter's own jobs
+  const recruiterJobs = useMemo(() => {
+    if (!currentUser) return jobs;
+    return jobs.filter(j =>
+      j.recruiter?.clerkId === currentUser.clerkId ||
+      j.recruiter?.clerkId === currentUser._id ||
+      j.postedBy === currentUser._id
+    );
+  }, [jobs, currentUser]);
+
+  const loadRankings = useCallback(async (jobId, filters = {}) => {
+    if (!jobId) return;
+    setLoading(true);
+    try {
+      const data = await fetchRankedCandidates(jobId, {
+        sort: filters.sort || sortBy,
+        recommendation: filters.recommendation || filterRec || undefined,
+        minScore: (filters.minScore ?? filterMinScore) || undefined,
+      });
+      setRankings(data.rankings || []);
+      setTotalResults(data.total || 0);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchRankedCandidates, sortBy, filterRec, filterMinScore]);
+
+  const handleJobSelect = useCallback((jobId) => {
+    setSelectedJobId(jobId);
+    setRankings([]);
+    setTotalResults(0);
+    if (jobId) {
+      loadRankings(jobId);
+    }
+  }, [loadRankings]);
+
+  const handleGenerate = useCallback(async () => {
+    if (!selectedJobId) {
+      addToast('Please select a job first.', 'error');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const result = await generateRanking(selectedJobId);
+      if (result.success) {
+        addToast(`Rankings generated! ${result.generated} new, ${result.cached} cached.`, 'success');
+        await loadRankings(selectedJobId);
+      } else {
+        addToast(result.error || 'Failed to generate rankings.', 'error');
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }, [selectedJobId, generateRanking, loadRankings, addToast]);
+
+  const handleShortlist = useCallback(async (rankingId, accepted) => {
+    const result = await handleShortlistDecision(selectedJobId, rankingId, accepted);
+    if (result.success) {
+      addToast(accepted ? 'Candidate shortlisted!' : 'Shortlist suggestion rejected.', accepted ? 'success' : 'info');
+      setRankings(prev => prev.map(r =>
+        r._id === rankingId ? { ...r, shortlistAccepted: accepted, stage: accepted ? 'Screening' : r.stage } : r
+      ));
+    } else {
+      addToast(result.error || 'Action failed.', 'error');
+    }
+  }, [selectedJobId, handleShortlistDecision, addToast]);
+
+  // Reload when filters change
+  useEffect(() => {
+    if (selectedJobId) {
+      loadRankings(selectedJobId);
+    }
+  }, [sortBy, filterRec, filterMinScore]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedJob = recruiterJobs.find(j => (j._id || j.id) === selectedJobId);
+
+  return (
+    <div className="flex flex-col gap-6 text-left">
+      {/* Header Section */}
+      <div className="border border-indigo-200/60 dark:border-indigo-500/20 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-pink-500/10 backdrop-blur-xl rounded-3xl p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20">
+              <Brain className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                AI Candidate Ranking Engine
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold uppercase tracking-wider">AI Powered</span>
+              </h3>
+              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Multi-dimensional analysis: Skills (40%) • Experience (25%) • Location (15%) • Semantic Match (20%)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            {/* Job Selector */}
+            <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Select Job Posting</span>
+              <select
+                value={selectedJobId}
+                onChange={(e) => handleJobSelect(e.target.value)}
+                className="p-2.5 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 text-xs font-semibold rounded-xl outline-none text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+              >
+                <option value="">Choose a job...</option>
+                {(recruiterJobs.length > 0 ? recruiterJobs : jobs).map(j => (
+                  <option key={j._id || j.id} value={j._id || j.id}>
+                    {j.title} — {j.company}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Generate Button */}
+            <button
+              onClick={handleGenerate}
+              disabled={!selectedJobId || generating}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all self-end ${
+                generating
+                  ? 'bg-slate-200 dark:bg-navy-800 text-slate-400 cursor-not-allowed'
+                  : selectedJobId
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-slate-100 dark:bg-navy-800 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              {generating ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
+              ) : (
+                <><Zap className="w-4 h-4" /> Generate Rankings</>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Job Info */}
+        {selectedJob && (
+          <div className="mt-4 pt-4 border-t border-indigo-200/30 dark:border-indigo-500/10 flex flex-wrap items-center gap-3">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Active Job:</span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{selectedJob.title}</span>
+            <span className="text-[10px] text-slate-400">at {selectedJob.company}</span>
+            {selectedJob.skills?.length > 0 && (
+              <div className="flex flex-wrap gap-1 ml-2">
+                {selectedJob.skills.slice(0, 5).map(s => (
+                  <span key={s} className="text-[8.5px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">{s}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Filters Bar */}
+      {selectedJobId && (
+        <div className="border border-slate-200/60 dark:border-navy-800/40 bg-white/70 dark:bg-navy-900/40 backdrop-blur-xl rounded-2xl p-4 flex flex-col md:flex-row items-stretch md:items-center gap-4">
+          {/* Sort */}
+          <div className="flex flex-col gap-1 min-w-[150px]">
+            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Sort By</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="p-2 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 text-xs font-semibold rounded-lg outline-none text-slate-700 dark:text-slate-200 focus:border-indigo-500"
+            >
+              <option value="finalScore">Overall Score</option>
+              <option value="skillsScore">Skills Score</option>
+              <option value="experienceScore">Experience Score</option>
+              <option value="locationScore">Location Score</option>
+              <option value="semanticScore">Semantic Score</option>
+            </select>
+          </div>
+
+          {/* Recommendation Filter */}
+          <div className="flex flex-col gap-1 min-w-[180px]">
+            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Recommendation</span>
+            <select
+              value={filterRec}
+              onChange={(e) => setFilterRec(e.target.value)}
+              className="p-2 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 text-xs font-semibold rounded-lg outline-none text-slate-700 dark:text-slate-200 focus:border-indigo-500"
+            >
+              <option value="">All Levels</option>
+              <option value="Highly Recommended">🔥 Highly Recommended</option>
+              <option value="Recommended">⭐ Recommended</option>
+              <option value="Potential Match">💡 Potential Match</option>
+              <option value="Low Match">⚠️ Low Match</option>
+            </select>
+          </div>
+
+          {/* Min Score */}
+          <div className="flex flex-col gap-1 min-w-[140px]">
+            <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <span>Min Score</span>
+              <span className="text-indigo-500 font-extrabold">{filterMinScore}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={filterMinScore}
+              onChange={(e) => setFilterMinScore(Number(e.target.value))}
+              className="w-full accent-indigo-500 h-1.5 bg-slate-100 dark:bg-navy-800 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          {/* Results count */}
+          <div className="flex items-center gap-2 ml-auto text-[10px] font-bold text-slate-500">
+            <Target className="w-3.5 h-3.5 text-indigo-500" />
+            <span>{totalResults} candidate{totalResults !== 1 ? 's' : ''} ranked</span>
+          </div>
+
+          {/* Refresh */}
+          <button
+            onClick={() => loadRankings(selectedJobId)}
+            className="p-2 rounded-lg bg-slate-100 dark:bg-navy-800 hover:bg-indigo-500/10 text-slate-500 hover:text-indigo-500 transition-all"
+            title="Refresh rankings"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Rankings List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20 gap-3">
+          <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+          <span className="text-sm font-semibold text-slate-500">Loading rankings...</span>
+        </div>
+      ) : rankings.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          {rankings.map((r) => {
+            const recStyle = RECOMMENDATION_STYLES[r.recommendation] || RECOMMENDATION_STYLES['Low Match'];
+            const isExpanded = expandedCard === r._id;
+            const rank = r.rank || 1;
+
+            return (
+              <div
+                key={r._id}
+                className={`border rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-lg ${
+                  rank === 1
+                    ? 'border-amber-400/40 dark:border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-white/70 to-white/70 dark:from-amber-500/10 dark:via-navy-900/40 dark:to-navy-900/40 shadow-md shadow-amber-500/10'
+                    : rank === 2
+                    ? 'border-slate-300/50 dark:border-slate-500/30 bg-gradient-to-r from-slate-300/10 via-white/70 to-white/70 dark:from-slate-400/10 dark:via-navy-900/40 dark:to-navy-900/40'
+                    : rank === 3
+                    ? 'border-amber-600/30 dark:border-amber-700/20 bg-gradient-to-r from-amber-700/5 via-white/70 to-white/70 dark:from-amber-700/10 dark:via-navy-900/40 dark:to-navy-900/40'
+                    : 'border-slate-200/70 dark:border-navy-800 bg-white/70 dark:bg-navy-900/40'
+                }`}
+              >
+                {/* Main Row */}
+                <div
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 cursor-pointer"
+                  onClick={() => setExpandedCard(isExpanded ? null : r._id)}
+                >
+                  {/* Rank Badge */}
+                  <div className="flex-shrink-0">
+                    {rank === 1 ? (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-amber-500/30">🥇</div>
+                    ) : rank === 2 ? (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-300 to-slate-500 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-slate-400/30">🥈</div>
+                    ) : rank === 3 ? (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-amber-700/30">🥉</div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-navy-800 text-slate-500 dark:text-slate-400 flex items-center justify-center font-extrabold text-sm border border-slate-200 dark:border-navy-700">#{rank}</div>
+                    )}
+                  </div>
+
+                  {/* Candidate Info */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <ImageWithFallback src={r.candidateAvatar} alt={r.candidateName} className="w-11 h-11 rounded-xl object-cover border-2 border-slate-100 dark:border-navy-800" type="avatar" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="text-sm font-bold text-slate-800 dark:text-white leading-none">{r.candidateName}</h5>
+                        <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase border ${recStyle.bg} ${recStyle.border} ${recStyle.text}`}>
+                          {recStyle.icon} {r.recommendation}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1 truncate">
+                        {r.candidateExperience || 'N/A'} experience • Stage: <span className="font-semibold text-slate-600 dark:text-slate-300">{r.stage}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Match Percentage — Big */}
+                  <div className="flex-shrink-0 text-center px-4">
+                    <div className={`text-2xl font-black ${
+                      r.finalScore > 85 ? 'text-emerald-500' : r.finalScore >= 70 ? 'text-blue-500' : r.finalScore >= 50 ? 'text-amber-500' : 'text-red-400'
+                    }`}>
+                      {r.finalScore}%
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Match</p>
+                  </div>
+
+                  {/* Score Breakdowns — Mini */}
+                  <div className="flex-shrink-0 w-full sm:w-44 flex flex-col gap-1.5">
+                    <ScoreBar label="Skills" score={r.skillsScore} color="text-indigo-500" />
+                    <ScoreBar label="Experience" score={r.experienceScore} color="text-purple-500" />
+                    <ScoreBar label="Location" score={r.locationScore} color="text-cyan-500" />
+                    <ScoreBar label="Semantic" score={r.semanticScore} color="text-pink-500" />
+                  </div>
+
+                  {/* Auto-Shortlist Actions */}
+                  <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                    {r.autoShortlisted && r.shortlistAccepted === null && (
+                      <>
+                        <span className="text-[8px] font-bold text-amber-500 uppercase flex items-center gap-1">
+                          <Star className="w-3 h-3" /> Auto-Suggested
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleShortlist(r._id, true); }}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                          >
+                            <ThumbsUp className="w-3 h-3" /> Accept
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleShortlist(r._id, false); }}
+                            className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-navy-800 hover:bg-red-500/10 text-slate-600 dark:text-slate-300 hover:text-red-500 text-[10px] font-bold flex items-center gap-1 transition-all"
+                          >
+                            <ThumbsDown className="w-3 h-3" /> Reject
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    {r.shortlistAccepted === true && (
+                      <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg">
+                        <Check className="w-3 h-3" /> Shortlisted
+                      </span>
+                    )}
+                    {r.shortlistAccepted === false && (
+                      <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
+                        <X className="w-3 h-3" /> Passed
+                      </span>
+                    )}
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="px-5 pb-5 pt-0 border-t border-slate-100 dark:border-navy-800/50 flex flex-col gap-4 animate-[fadeIn_0.2s_ease-out]">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      {/* Strengths */}
+                      <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                        <h6 className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Strengths
+                        </h6>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(r.matchedSkills || []).length > 0 ? r.matchedSkills.map(s => (
+                            <span key={s} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                              ✔ {s}
+                            </span>
+                          )) : (
+                            <span className="text-[9px] text-slate-400">No matched skills data</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Missing Skills */}
+                      <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                        <h6 className="text-[10px] uppercase font-bold text-red-500 dark:text-red-400 mb-2 flex items-center gap-1">
+                          <X className="w-3.5 h-3.5" /> Missing Skills
+                        </h6>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(r.missingSkills || []).length > 0 ? r.missingSkills.map(s => (
+                            <span key={s} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 dark:text-red-400 flex items-center gap-0.5">
+                              ✖ {s}
+                            </span>
+                          )) : (
+                            <span className="text-[9px] text-slate-400 italic">All required skills matched!</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* AI Recommendation */}
+                      <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
+                        <h6 className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5" /> AI Recommendation
+                        </h6>
+                        <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {r.summary || 'No analysis available.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Detailed Score Grid */}
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        { label: 'Skills Match', score: r.skillsScore, weight: '40%', color: 'from-indigo-500 to-blue-500' },
+                        { label: 'Experience', score: r.experienceScore, weight: '25%', color: 'from-purple-500 to-pink-500' },
+                        { label: 'Location', score: r.locationScore, weight: '15%', color: 'from-cyan-500 to-teal-500' },
+                        { label: 'Semantic', score: r.semanticScore, weight: '20%', color: 'from-pink-500 to-rose-500' },
+                      ].map((dim) => (
+                        <div key={dim.label} className="p-3 rounded-xl bg-slate-50 dark:bg-navy-950/40 border border-slate-200/50 dark:border-navy-800/50 text-center">
+                          <div className={`text-lg font-black bg-gradient-to-r ${dim.color} bg-clip-text text-transparent`}>
+                            {dim.score}
+                          </div>
+                          <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{dim.label}</p>
+                          <p className="text-[8px] text-slate-400 mt-0.5">Weight: {dim.weight}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : selectedJobId ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+            <Brain className="w-10 h-10 text-indigo-400" />
+          </div>
+          <div className="text-center">
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">No Rankings Generated Yet</h4>
+            <p className="text-[11px] text-slate-500 mt-1 max-w-sm">
+              Click "Generate Rankings" to analyze all applicants using our AI-powered multi-dimensional scoring engine.
+            </p>
+          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+          >
+            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            Generate Rankings Now
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="p-5 rounded-2xl bg-slate-100 dark:bg-navy-800/50">
+            <BarChart3 className="w-10 h-10 text-slate-400" />
+          </div>
+          <div className="text-center">
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Select a Job Posting</h4>
+            <p className="text-[11px] text-slate-500 mt-1 max-w-sm">
+              Choose a job from the dropdown above to view AI-powered candidate rankings with detailed score breakdowns.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

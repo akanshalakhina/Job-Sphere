@@ -119,3 +119,74 @@ export const callGeminiWithInlineFile = async (
 export const isGeminiAvailable = (): boolean => {
   return !!GEMINI_API_KEY;
 };
+
+// ── Embedding Support for Ranking Engine ──────────────────────────────────
+
+const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
+const GEMINI_EMBEDDING_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent`;
+
+export const generateEmbedding = async (text: string): Promise<number[]> => {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY not set");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(`${GEMINI_EMBEDDING_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: `models/${GEMINI_EMBEDDING_MODEL}`,
+        content: {
+          parts: [{ text }],
+        },
+      }),
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(
+      `[Gemini Embedding] API error (${response.status}):`,
+      errorText,
+    );
+    throw new Error(`Gemini Embedding API error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    embedding?: { values?: number[] };
+  };
+
+  const values = data.embedding?.values;
+  if (!values || !Array.isArray(values) || values.length === 0) {
+    console.error("[Gemini Embedding] No embedding values in response:", JSON.stringify(data));
+    throw new Error("No embedding values from Gemini");
+  }
+
+  return values;
+};
+
+export const computeCosineSimilarity = (a: number[], b: number[]): number => {
+  if (a.length !== b.length || a.length === 0) return 0;
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  if (denominator === 0) return 0;
+
+  return dotProduct / denominator;
+};

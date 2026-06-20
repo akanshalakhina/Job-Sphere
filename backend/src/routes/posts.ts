@@ -3,6 +3,7 @@ import { requireAuth, getRequestUserId } from "../middlewares/requireAuth";
 import { Post } from "../models/Post";
 import { User } from "../models/User";
 import { isDBConnected } from "../lib/mongodb";
+import { getMemPosts, createMemPost, toggleMemPostLike, addMemPostComment, getMemTrendingTags } from "../lib/memoryDb";
 
 const router = Router();
 
@@ -90,7 +91,9 @@ router.get("/posts/trending-tags", async (_req, res) => {
 
 router.post("/posts", requireAuth, async (req, res) => {
   if (!isDBConnected()) {
-    res.status(503).json({ error: "Database not connected" });
+    const user = { name: "Mock User", avatar: "", clerkId: req.body.userId || "mock_user", isVerified: false };
+    const post = createMemPost({ _id: "post_" + Date.now(), author: user, content: req.body.content, media: req.body.media || "", hashtags: extractHashtags(req.body.content), impressions: 0, likes: [], likesCount: 0, comments: [], time: "Just now" });
+    res.status(201).json(post);
     return;
   }
   const userId = getRequestUserId(req);
@@ -127,7 +130,9 @@ router.post("/posts", requireAuth, async (req, res) => {
 
 router.post("/posts/:id/like", requireAuth, async (req, res) => {
   if (!isDBConnected()) {
-    res.status(503).json({ error: "Database not connected" });
+    const resLike = toggleMemPostLike(req.params.id, getRequestUserId(req) as string);
+    if (!resLike) { res.status(404).json({ error: "Post not found" }); return; }
+    res.json(resLike);
     return;
   }
   const userId = getRequestUserId(req);
@@ -154,7 +159,9 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
 
 router.post("/posts/:id/comment", requireAuth, async (req, res) => {
   if (!isDBConnected()) {
-    res.status(503).json({ error: "Database not connected" });
+    const resComm = addMemPostComment(req.params.id, { author: "Mock User", authorAvatar: "", content: req.body.content, time: "Just now" });
+    if (!resComm) { res.status(404).json({ error: "Post not found" }); return; }
+    res.json(resComm);
     return;
   }
   const userId = getRequestUserId(req);

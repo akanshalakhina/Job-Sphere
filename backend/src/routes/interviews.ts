@@ -4,6 +4,7 @@ import { Interview } from "../models/Interview";
 import { User } from "../models/User";
 import { isEnvAdminUserId } from "../lib/envAdmin";
 import { isDBConnected } from "../lib/mongodb";
+import { getMemInterviews, createMemInterview } from "../lib/memoryDb";
 import { defaultInterviewRounds, syncInterviewToCalendar } from "../lib/calendarSync";
 import {
   getMemInterviews,

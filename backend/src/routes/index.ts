@@ -12,6 +12,7 @@ import chatRouter from "./chat";
 import aiCoachRouter from "./aiCoach";
 import authRouter from "./auth";
 import communicationsRouter from "./communications";
+import rankingRouter from "./ranking";
 
 const router: IRouter = Router();
 
@@ -29,5 +30,6 @@ router.use(adminRouter);
 router.use(chatRouter);
 router.use(aiCoachRouter);
 router.use(communicationsRouter);
+router.use(rankingRouter);
 
 export default router;
