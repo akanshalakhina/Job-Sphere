@@ -6,11 +6,20 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
+.env
+.env.*
+!.env.example
 node_modules
 dist
 dist-ssr
+*.tsbuildinfo
 *.local
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+*credentials*.json
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +31,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

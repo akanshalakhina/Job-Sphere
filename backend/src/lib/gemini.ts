@@ -1,0 +1,192 @@
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = "gemini-flash-latest";
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 15000);
+
+export type GeminiPart =
+  | { text: string }
+  | { inline_data: { mime_type: string; data: string } };
+
+export interface GeminiMessage {
+  role: "user" | "model";
+  parts: GeminiPart[];
+}
+
+const extractGeminiText = (data: unknown): string => {
+  const candidate = (data as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  }).candidates?.[0];
+  const text = candidate?.content?.parts?.find((part) => part.text)?.text;
+
+  if (!text) {
+    console.error("[Gemini] No text in response:", JSON.stringify(data));
+    throw new Error("No response from Gemini");
+  }
+
+  return text;
+};
+
+const generateContent = async (
+  systemPrompt: string,
+  contents: GeminiMessage[],
+  maxOutputTokens = 800,
+): Promise<string> => {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY not set");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens,
+        },
+      }),
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Gemini] API error (${response.status}):`, errorText);
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return extractGeminiText(data);
+};
+
+export const callGemini = async (
+  systemPrompt: string,
+  messages: { role: "user" | "assistant"; content: string }[],
+): Promise<string> => {
+  const geminiContents: GeminiMessage[] = messages.map((msg) => ({
+    role: msg.role === "user" ? "user" : "model",
+    parts: [{ text: msg.content }],
+  }));
+
+  try {
+    return await generateContent(systemPrompt, geminiContents);
+  } catch (error) {
+    console.error("[Gemini] Request failed:", error);
+    throw error;
+  }
+};
+
+export const callGeminiWithInlineFile = async (
+  systemPrompt: string,
+  prompt: string,
+  file: { mimeType: string; data: Buffer },
+): Promise<string> => {
+  const contents: GeminiMessage[] = [
+    {
+      role: "user",
+      parts: [
+        { text: prompt },
+        {
+          inline_data: {
+            mime_type: file.mimeType,
+            data: file.data.toString("base64"),
+          },
+        },
+      ],
+    },
+  ];
+
+  try {
+    return await generateContent(systemPrompt, contents, 1200);
+  } catch (error) {
+    console.error("[Gemini] Inline file request failed:", error);
+    throw error;
+  }
+};
+
+export const isGeminiAvailable = (): boolean => {
+  return !!GEMINI_API_KEY;
+};
+
+// ── Embedding Support for Ranking Engine ──────────────────────────────────
+
+const GEMINI_EMBEDDING_MODEL = "gemini-embedding-2";
+const GEMINI_EMBEDDING_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent`;
+
+export const generateEmbedding = async (text: string): Promise<number[]> => {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY not set");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(`${GEMINI_EMBEDDING_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: `models/${GEMINI_EMBEDDING_MODEL}`,
+        content: {
+          parts: [{ text }],
+        },
+      }),
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(
+      `[Gemini Embedding] API error (${response.status}):`,
+      errorText,
+    );
+    throw new Error(`Gemini Embedding API error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    embedding?: { values?: number[] };
+  };
+
+  const values = data.embedding?.values;
+  if (!values || !Array.isArray(values) || values.length === 0) {
+    console.error("[Gemini Embedding] No embedding values in response:", JSON.stringify(data));
+    throw new Error("No embedding values from Gemini");
+  }
+
+  return values;
+};
+
+export const computeCosineSimilarity = (a: number[], b: number[]): number => {
+  if (a.length !== b.length || a.length === 0) return 0;
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+  if (denominator === 0) return 0;
+
+  return dotProduct / denominator;
+};

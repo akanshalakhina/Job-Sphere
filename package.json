@@ -1,34 +1,24 @@
 {
-  "name": "naurkaridemo",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "job-sphere",
+  "version": "1.0.0",
+  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "kill-ports": "node kill-ports.js"
   },
-  "dependencies": {
-    "autoprefixer": "^10.4.20",
-    "framer-motion": "^12.40.0",
-    "lucide-react": "^1.16.0",
-    "postcss": "^8.4.49",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-router-dom": "^7.15.1",
-    "recharts": "^3.8.1",
-    "tailwindcss": "^3.4.15"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akanshalakhina/Job-Sphere.git"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/akanshalakhina/Job-Sphere/issues"
+  },
+  "homepage": "https://github.com/akanshalakhina/Job-Sphere#readme",
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^10.3.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.6.0",
-    "vite": "^8.0.12"
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.2"
   }
 }
