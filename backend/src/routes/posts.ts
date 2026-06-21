@@ -130,7 +130,7 @@ router.post("/posts", requireAuth, async (req, res) => {
 
 router.post("/posts/:id/like", requireAuth, async (req, res) => {
   if (!isDBConnected()) {
-    const resLike = toggleMemPostLike(req.params.id, getRequestUserId(req) as string);
+    const resLike = toggleMemPostLike(req.params.id as string, getRequestUserId(req) as string);
     if (!resLike) { res.status(404).json({ error: "Post not found" }); return; }
     res.json(resLike);
     return;
@@ -159,7 +159,7 @@ router.post("/posts/:id/like", requireAuth, async (req, res) => {
 
 router.post("/posts/:id/comment", requireAuth, async (req, res) => {
   if (!isDBConnected()) {
-    const resComm = addMemPostComment(req.params.id, { author: "Mock User", authorAvatar: "", content: req.body.content, time: "Just now" });
+    const resComm = addMemPostComment(req.params.id as string, { author: "Mock User", authorAvatar: "", content: req.body.content, time: "Just now" });
     if (!resComm) { res.status(404).json({ error: "Post not found" }); return; }
     res.json(resComm);
     return;

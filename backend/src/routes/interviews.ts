@@ -4,7 +4,6 @@ import { Interview } from "../models/Interview";
 import { User } from "../models/User";
 import { isEnvAdminUserId } from "../lib/envAdmin";
 import { isDBConnected } from "../lib/mongodb";
-import { getMemInterviews, createMemInterview } from "../lib/memoryDb";
 import { defaultInterviewRounds, syncInterviewToCalendar } from "../lib/calendarSync";
 import {
   getMemInterviews,
@@ -18,7 +17,6 @@ import {
 const router = Router();
 const paramToString = (value: string | string[] | undefined): string =>
   Array.isArray(value) ? value[0] ?? "" : value ?? "";
-
 router.get("/interviews", requireAuth, async (req, res) => {
   const userId = getRequestUserId(req);
   if (!userId) {

@@ -25,7 +25,7 @@ router.get("/opportunities", async (req, res) => {
 
 router.post("/opportunities/:id/register", requireAuth, async (req, res) => {
   if (!isDBConnected()) {
-    const oppRes = registerMemOpportunity(req.params.id, getRequestUserId(req) as string);
+    const oppRes = registerMemOpportunity(req.params.id as string, getRequestUserId(req) as string);
     if (!oppRes) { res.status(404).json({ error: "Opportunity not found" }); return; }
     if (oppRes === "Already registered") { res.status(409).json({ error: "Already registered" }); return; }
     res.json({ success: true, registered: oppRes.registered });

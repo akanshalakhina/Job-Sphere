@@ -23,7 +23,7 @@ router.post(
   "/jobs/:jobId/generate-ranking",
   requireAuth,
   async (req, res) => {
-    const jobId = req.params.jobId;
+    const jobId = req.params.jobId as string;
     const userId = getRequestUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -185,7 +185,7 @@ router.get(
   "/jobs/:jobId/ranked-candidates",
   requireAuth,
   async (req, res) => {
-    const jobId = req.params.jobId;
+    const jobId = req.params.jobId as string;
     const userId = getRequestUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -350,7 +350,7 @@ router.get(
   "/jobs/:jobId/top-candidates",
   requireAuth,
   async (req, res) => {
-    const jobId = req.params.jobId;
+    const jobId = req.params.jobId as string;
     const userId = getRequestUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -441,7 +441,8 @@ router.patch(
   "/jobs/:jobId/rankings/:rankingId/shortlist",
   requireAuth,
   async (req, res) => {
-    const { jobId, rankingId } = req.params;
+    const jobId = req.params.jobId as string;
+    const rankingId = req.params.rankingId as string;
     const userId = getRequestUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
