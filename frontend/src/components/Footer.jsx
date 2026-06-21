@@ -81,7 +81,6 @@ export const Footer = () => {
           <div>
             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-4">Company</h4>
             <ul className="flex flex-col gap-2.5">
-              <li><Link to="/about" className="text-xs text-slate-500 hover:text-brand-500 dark:text-slate-400 dark:hover:text-white transition-colors">About Story</Link></li>
               <li><Link to="/contact" className="text-xs text-slate-500 hover:text-brand-500 dark:text-slate-400 dark:hover:text-white transition-colors">Contact Support</Link></li>
               <li><a href="#" className="text-xs text-slate-500 hover:text-brand-500 dark:text-slate-400 dark:hover:text-white transition-colors">Careers at JobSphere</a></li>
               <li><a href="#" className="text-xs text-slate-500 hover:text-brand-500 dark:text-slate-400 dark:hover:text-white transition-colors">Media Kit</a></li>

@@ -12,6 +12,7 @@ import { useToast } from '../context/ToastContext';
 import { TRENDING_SKILLS, ROADMAPS, CERTIFICATIONS } from '../data/mockData';
 import { AICoachModal } from '../components/AICoachModal';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import UpskillingBanner from "../components/UpskillingBanner";
 
 export const CandidateDashboard = () => {
   const navigate = useNavigate();
@@ -196,6 +197,8 @@ export const CandidateDashboard = () => {
           </button>
         ))}
       </div>
+
+      <UpskillingBanner userRole="candidate" />
 
       {/* Main Tab Panels */}
       <AnimatePresence mode="wait">

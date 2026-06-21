@@ -15,7 +15,6 @@ const JobDetailsPage = React.lazy(() => import('./pages/JobDetailsPage').then(mo
 const ResumeAnalyzerPage = React.lazy(() => import('./pages/ResumeAnalyzerPage').then(module => ({ default: module.ResumeAnalyzerPage })));
 const FeedPage = React.lazy(() => import('./pages/FeedPage').then(module => ({ default: module.FeedPage })));
 const OpportunitiesPage = React.lazy(() => import('./pages/OpportunitiesPage').then(module => ({ default: module.OpportunitiesPage })));
-const AboutPage = React.lazy(() => import('./pages/AboutPage').then(module => ({ default: module.AboutPage })));
 const ContactPage = React.lazy(() => import('./pages/ContactPage').then(module => ({ default: module.ContactPage })));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 const PublicProfilePage = React.lazy(() => import('./pages/PublicProfilePage').then(module => ({ default: module.PublicProfilePage })));
@@ -79,7 +78,6 @@ function App() {
                     <ProtectedRoute><FeedPage /></ProtectedRoute>
                   } />
                   <Route path="/opportunities" element={<OpportunitiesPage />} />
-                  <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/profile/:clerkId" element={<PublicProfilePage />} />
                   <Route path="*" element={<NotFoundPage />} />

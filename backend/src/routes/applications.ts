@@ -17,7 +17,20 @@ import {
 } from "../lib/memoryDb";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ 
+  storage: multer.memoryStorage(), 
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (
+      file.mimetype === "application/pdf" ||
+      file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF and DOCX files are allowed"));
+    }
+  },
+});
 const paramToString = (value: string | string[] | undefined): string =>
   Array.isArray(value) ? value[0] ?? "" : value ?? "";
 

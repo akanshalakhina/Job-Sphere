@@ -24,7 +24,7 @@ router.get("/jobs", async (req, res) => {
     res.json(jobs);
     return;
   }
-  const { search, department, workplace, experience, location, minSalary, sort } = req.query;
+  const { search, department, workplace, experience, location, minSalary, sort, page = "1", limit = "50" } = req.query;
   const filter: Record<string, unknown> = { status: "approved" };
 
   if (search) {
@@ -49,8 +49,13 @@ router.get("/jobs", async (req, res) => {
   if (sort === "applicants") sortOpt = { applicants: -1 };
   if (sort === "salary") sortOpt = { salaryNum: -1 }; // Assumes we sort by a numeric salary field if we had one. For now keeping it simple.
 
+  const pageNum = parseInt(String(page), 10) || 1;
+  const limitNum = parseInt(String(limit), 10) || 50;
+  const skipNum = (pageNum - 1) * limitNum;
+
   try {
-    const jobs = await Job.find(filter).sort(sortOpt).limit(50);
+    const jobs = await Job.find(filter).sort(sortOpt).skip(skipNum).limit(limitNum);
+    // Returning just the array to maintain backwards compatibility with the frontend
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch jobs" });

@@ -9,6 +9,8 @@ import {
 import { useAppState } from '../context/AppStateContext';
 import { useToast } from '../context/ToastContext';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import OfferBanner from '../components/OfferBanner';
+import CandidateProfileModal from '../components/CandidateProfileModal';
 
 export const RecruiterDashboard = () => {
   const { 
@@ -17,6 +19,9 @@ export const RecruiterDashboard = () => {
     jobs, generateRanking, fetchRankedCandidates, handleShortlistDecision
   } = useAppState();
   const { addToast } = useToast();
+
+  // Profile modal state
+  const [profileCandidate, setProfileCandidate] = useState(null);
 
   const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline', 'shortlist', 'rankings', 'schedule', 'postjob', 'branding'
   
@@ -254,7 +259,8 @@ export const RecruiterDashboard = () => {
         </div>
 
         {/* Tab switcher */}
-        <div className="border border-slate-200 dark:border-navy-800 bg-white dark:bg-navy-900 rounded-2xl p-1 flex flex-wrap gap-1 w-full lg:w-auto">
+        <div className="w-full overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-navy-800 pb-2">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
           {[
             { id: 'pipeline', label: 'Pipeline Board' },
             { id: 'shortlist', label: 'Candidate Grid' },
@@ -266,7 +272,7 @@ export const RecruiterDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 lg:flex-initial px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
+              className={`px-5 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.id
                   ? tab.highlight ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-brand-500 text-white shadow'
                   : tab.highlight ? 'text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-extrabold' : 'text-slate-600 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-navy-800/40'
@@ -275,8 +281,11 @@ export const RecruiterDashboard = () => {
               {tab.label}
             </button>
           ))}
+          </div>
         </div>
       </div>
+
+      <OfferBanner userRole="recruiter" />
 
       {/* Recruiter Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
@@ -337,6 +346,16 @@ export const RecruiterDashboard = () => {
 
                         <p className="text-[8.5px] text-slate-400">Position: <span className="text-slate-600 dark:text-slate-300 font-bold truncate">{cand.appliedFor}</span></p>
 
+                        {/* Skills mini-pills */}
+                        {cand.skills?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {cand.skills.slice(0, 3).map(s => (
+                              <span key={s} className="text-[7.5px] px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-500 font-bold">{s}</span>
+                            ))}
+                            {cand.skills.length > 3 && <span className="text-[7.5px] text-slate-400">+{cand.skills.length - 3}</span>}
+                          </div>
+                        )}
+
                         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-navy-900 text-[10px] font-semibold">
                           <span className="text-brand-500 font-extrabold">{cand.atsScore}% ATS</span>
                           
@@ -345,6 +364,7 @@ export const RecruiterDashboard = () => {
                               <button
                                 onClick={() => handleDemote(cand.id, colName)}
                                 className="w-4 h-4 rounded bg-slate-100 dark:bg-navy-800 hover:bg-rose-500/10 hover:text-rose-500 text-slate-400 text-[9px] flex items-center justify-center font-bold"
+                                title="Move back"
                               >
                                 ‹
                               </button>
@@ -353,12 +373,21 @@ export const RecruiterDashboard = () => {
                               <button
                                 onClick={() => handleAdvance(cand.id, colName)}
                                 className="w-4 h-4 rounded bg-slate-100 dark:bg-navy-800 hover:bg-brand-500/10 hover:text-brand-500 text-slate-400 text-[9px] flex items-center justify-center font-bold"
+                                title="Advance stage"
                               >
                                 ›
                               </button>
                             )}
                           </div>
                         </div>
+
+                        {/* View Profile button */}
+                        <button
+                          onClick={() => setProfileCandidate(cand)}
+                          className="w-full mt-2 py-1.5 rounded-lg bg-slate-50 dark:bg-navy-900 hover:bg-brand-500 hover:text-white text-slate-500 dark:text-slate-400 text-[9px] font-extrabold uppercase tracking-wide border border-slate-200 dark:border-navy-800 transition-all"
+                        >
+                          View Full Profile
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -507,12 +536,14 @@ export const RecruiterDashboard = () => {
                             <span className="text-[9px] font-bold bg-brand-500/10 text-brand-600 dark:text-brand-400 px-2 py-0.5 rounded-full">{cand.stage}</span>
                           </td>
                           <td className="p-3">
-                            <button
-                              onClick={() => addToast(`Messaged ${cand.name}!`, 'success')}
-                              className="text-[10px] font-bold text-brand-500 hover:underline flex items-center gap-0.5"
-                            >
-                              Contact <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setProfileCandidate(cand)}
+                                className="text-[10px] font-bold text-brand-500 hover:underline flex items-center gap-0.5"
+                              >
+                                View Profile <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -735,6 +766,17 @@ export const RecruiterDashboard = () => {
           )}
 
         </div>
+      )}
+
+      {/* Candidate Profile Modal */}
+      {profileCandidate && (
+        <CandidateProfileModal
+          candidate={profileCandidate}
+          onClose={() => setProfileCandidate(null)}
+          onAdvance={columns.indexOf(profileCandidate.stage) < columns.length - 1 ? () => { handleAdvance(profileCandidate.id, profileCandidate.stage); setProfileCandidate(null); } : null}
+          onDemote={columns.indexOf(profileCandidate.stage) > 0 ? () => { handleDemote(profileCandidate.id, profileCandidate.stage); setProfileCandidate(null); } : null}
+          stages={columns}
+        />
       )}
 
       {activeTab === 'rankings' && <AIRankingsTab

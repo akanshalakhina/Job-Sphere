@@ -48,7 +48,7 @@ async function verifyAll() {
   // 3. Send a test email and verify delivery
   console.log("3. Send a test email and verify delivery:");
   try {
-    const toEmail = process.env.ADMIN_EMAIL || "test@example.com";
+    const toEmail = "jobsphereakanshalakhina@gmail.com";
     const result = await sendTransactionalEmail({
       to: toEmail,
       subject: "Production Verification Test",
@@ -81,7 +81,7 @@ async function verifyAll() {
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
       const result = await model.generateContent("Say 'hello world'");
       const text = result.response.text();
       console.log(`   [SUCCESS] Gemini responded: "${text.trim()}"\n`);

@@ -14,6 +14,10 @@ import authRouter from "./auth";
 import communicationsRouter from "./communications";
 import rankingRouter from "./ranking";
 
+import notificationsRouter from "./notifications";
+import offersRouter from "./offers";
+import upskillRouter from "./upskill";
+
 const router: IRouter = Router();
 
 router.use(authRouter);
@@ -31,5 +35,8 @@ router.use(chatRouter);
 router.use(aiCoachRouter);
 router.use(communicationsRouter);
 router.use(rankingRouter);
+router.use(notificationsRouter);
+router.use(offersRouter);
+router.use(upskillRouter);
 
 export default router;

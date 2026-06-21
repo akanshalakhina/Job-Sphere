@@ -126,6 +126,11 @@ export const AppStateProvider = ({ children }) => {
             skills: c.skills || [],
             stage: stageMap[c.stage] || c.stage || 'Applied',
             resumeUrl: c.resumeUrl || '',
+            candidateClerkId: c.candidateClerkId || '',
+            company: c.company || '',
+            jobTitle: c.jobTitle || '',
+            experience: c.experience || '',
+            coverLetter: c.coverLetter || '',
           })));
         }
 

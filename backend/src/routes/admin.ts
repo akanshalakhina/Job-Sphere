@@ -4,6 +4,9 @@ import { Job } from "../models/Job";
 import { User } from "../models/User";
 import { Application } from "../models/Application";
 import { Post } from "../models/Post";
+import { Notification } from "../models/Notification";
+import { Offer } from "../models/Offer";
+import { Course } from "../models/Course";
 import { isDBConnected } from "../lib/mongodb";
 import { getMemAdminStats, getMemCompanies, getMemPendingJobs, setMemJobStatus } from "../lib/memoryDb";
 
@@ -127,6 +130,40 @@ router.patch("/admin/companies/verify", adminOnly, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to update company verification" });
+  }
+});
+
+router.post("/admin/notifications/blast", adminOnly, async (req, res) => {
+  if (!isDBConnected()) return res.status(503).json({ error: "Database not connected" });
+  try {
+    const { targetRole, title, message, type } = req.body;
+    const notification = new Notification({ targetRole, title, message, type });
+    await notification.save();
+    res.json(notification);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to send notification blast" });
+  }
+});
+
+router.post("/admin/offers", adminOnly, async (req, res) => {
+  if (!isDBConnected()) return res.status(503).json({ error: "Database not connected" });
+  try {
+    const offer = new Offer(req.body);
+    await offer.save();
+    res.json(offer);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create offer" });
+  }
+});
+
+router.post("/admin/courses", adminOnly, async (req, res) => {
+  if (!isDBConnected()) return res.status(503).json({ error: "Database not connected" });
+  try {
+    const course = new Course(req.body);
+    await course.save();
+    res.json(course);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create course" });
   }
 });
 

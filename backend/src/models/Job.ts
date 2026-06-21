@@ -37,4 +37,6 @@ const JobSchema = new Schema(
   { timestamps: true }
 );
 
+JobSchema.index({ status: 1, createdAt: -1 });
+
 export const Job = models.Job || model("Job", JobSchema);

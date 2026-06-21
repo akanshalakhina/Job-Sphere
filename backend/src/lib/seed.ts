@@ -287,6 +287,31 @@ const SEED_OPPORTUNITIES = [
   },
 ];
 
+const SEED_OFFERS = [
+  {
+    title: "Diwali Hiring Offer",
+    description: "Premium Plan ₹5000 → ₹4000. 20% OFF",
+    discountPercentage: 20,
+    applicablePlan: "Premium",
+    expiresAt: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+    isActive: true
+  }
+];
+
+const SEED_COURSES = [
+  { title: "AI/ML Masterclass", platform: "Coursera", targetSkill: "AI/ML", url: "https://coursera.org" },
+  { title: "GenAI for Engineers", platform: "Great Learning", targetSkill: "GenAI", url: "https://mygreatlearning.com" },
+  { title: "Advanced React", platform: "Udemy", targetSkill: "React", url: "https://udemy.com" },
+  { title: "Next.js 14 Deep Dive", platform: "Udemy", targetSkill: "Next.js", url: "https://udemy.com" },
+  { title: "AWS Solutions Architect", platform: "Coursera", targetSkill: "AWS", url: "https://coursera.org" }
+];
+
+const SEED_NOTIFICATIONS = [
+  { targetRole: "All", title: "New Festival Discount Available", message: "Get 20% OFF on Premium Plans this Diwali!", type: "banner" },
+  { targetRole: "Recruiter", title: "5 New Applications", message: "You have received 5 new applications for Senior Frontend Engineer.", type: "popup" },
+  { targetRole: "Recruiter", title: "3 Candidates Shortlisted", message: "AI has successfully shortlisted 3 candidates for your recent job posting.", type: "popup" },
+];
+
 export const seedDatabase = async (): Promise<void> => {
   const [jobResults, postResults, opportunityResults] = await Promise.all([
     Promise.all(
@@ -318,6 +343,17 @@ export const seedDatabase = async (): Promise<void> => {
     ),
   ]);
 
+  // Import Notification, Offer, Course dynamically
+  const { Notification } = require("../models/Notification");
+  const { Offer } = require("../models/Offer");
+  const { Course } = require("../models/Course");
+
+  await Promise.all([
+    Promise.all(SEED_OFFERS.map(o => Offer.updateOne({ title: o.title }, { $setOnInsert: o }, { upsert: true }))),
+    Promise.all(SEED_COURSES.map(c => Course.updateOne({ title: c.title }, { $setOnInsert: c }, { upsert: true }))),
+    Promise.all(SEED_NOTIFICATIONS.map(n => Notification.updateOne({ title: n.title }, { $setOnInsert: n }, { upsert: true })))
+  ]);
+
   const insertedJobs = jobResults.reduce((total, result) => total + Number(result.upsertedCount || 0), 0);
   const insertedPosts = postResults.reduce((total, result) => total + Number(result.upsertedCount || 0), 0);
   const insertedOpportunities = opportunityResults.reduce((total, result) => total + Number(result.upsertedCount || 0), 0);
@@ -326,3 +362,4 @@ export const seedDatabase = async (): Promise<void> => {
     `[Seed] Shared Mongo data ready. Inserted missing records only: ${insertedJobs} jobs, ${insertedPosts} posts, ${insertedOpportunities} opportunities.`,
   );
 };
+

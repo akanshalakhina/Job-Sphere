@@ -28,6 +28,8 @@ const ApplicationSchema = new Schema(
 );
 
 ApplicationSchema.index({ job: 1, candidate: 1 }, { unique: true });
+ApplicationSchema.index({ candidateClerkId: 1 });
+ApplicationSchema.index({ job: 1, stage: 1 });
 
 export const Application =
   models.Application || model("Application", ApplicationSchema);

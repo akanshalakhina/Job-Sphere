@@ -86,25 +86,54 @@ export function computeSkillsMatch(
 // 2. Experience Match (25%)
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Extract numeric years from strings like "3+ Years", "5 Years", "2-4 Years", "Entry Level" */
 export function parseYearsFromString(s: string): number | null {
   if (!s || !s.trim()) return null;
 
   const lower = s.toLowerCase().trim();
-  if (lower.includes("entry") || lower.includes("fresher") || lower === "0") {
+  if (lower.includes("entry") || lower.includes("fresher") || lower === "0" || lower.includes("no experience")) {
     return 0;
   }
-
-  // Match patterns like "3+", "3-5", "3"
-  const rangeMatch = lower.match(/(\d+)\s*[-–]\s*(\d+)/);
-  if (rangeMatch) {
-    return (parseInt(rangeMatch[1], 10) + parseInt(rangeMatch[2], 10)) / 2;
+  
+  if (lower.includes("half a year")) {
+    return 0.5;
   }
 
+  // Match month patterns like "18 months"
+  const monthMatch = lower.match(/(\d+)\s*month/);
+  if (monthMatch) {
+    return Math.round((parseInt(monthMatch[1], 10) / 12) * 10) / 10;
+  }
+
+  // Text numbers
+  const textNums: Record<string, number> = {
+    one: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10
+  };
+  for (const [key, val] of Object.entries(textNums)) {
+    if (lower.includes(`${key} year`) || lower.includes(`${key} yr`)) return val;
+  }
+
+  // Match range patterns like "3-5" or "1.5 - 2"
+  const rangeMatch = lower.match(/(\d+(\.\d+)?)\s*[-–]\s*(\d+(\.\d+)?)/);
+  if (rangeMatch) {
+    return (parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[3])) / 2;
+  }
+
+  // Match decimal patterns like "1.5"
+  const floatMatch = lower.match(/(\d+\.\d+)/);
+  if (floatMatch) {
+    return parseFloat(floatMatch[1]);
+  }
+
+  // Match exact integers
   const plusMatch = lower.match(/(\d+)\+?/);
   if (plusMatch) {
     return parseInt(plusMatch[1], 10);
   }
+
+  if (lower.includes("mid") || lower.includes("associate")) return 3;
+  if (lower.includes("senior") || lower.includes("lead")) return 5;
+  if (lower.includes("principal") || lower.includes("director")) return 8;
 
   return null;
 }

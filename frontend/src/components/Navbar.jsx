@@ -4,6 +4,7 @@ import { Sun, Moon, Briefcase, Sparkles, Menu, X, LogOut, ChevronDown } from 'lu
 import { useTheme } from '../context/ThemeContext';
 import { useAppState } from '../context/AppStateContext';
 import { ImageWithFallback } from './ImageWithFallback';
+import NotificationCenter from './NotificationCenter';
 
 export const Navbar = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -20,7 +21,6 @@ export const Navbar = () => {
     { name: 'Feed', path: '/feed' },
     { name: 'Opportunities', path: '/opportunities' },
     { name: 'Resume Analyzer', path: '/analyzer' },
-    { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
   ];
 
@@ -69,6 +69,11 @@ export const Navbar = () => {
                 <Briefcase className="w-3.5 h-3.5 text-brand-500" />
                 {userRole === 'candidate' ? 'Student Workspace' : userRole === 'recruiter' ? 'Recruiter Suite' : 'Admin Console'}
               </Link>
+
+              {/* Notification Center */}
+              {currentUser && (
+                <NotificationCenter role={userRole} userId={currentUser.id || currentUser._id} />
+              )}
 
               {/* Profile Dropdown */}
               {currentUser && (

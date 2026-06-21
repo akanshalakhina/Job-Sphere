@@ -7,6 +7,9 @@ import {
 import { useAppState } from '../context/AppStateContext';
 import { useToast } from '../context/ToastContext';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import AdminOffers from '../components/admin/AdminOffers';
+import AdminUpskilling from '../components/admin/AdminUpskilling';
+import AdminNotifications from '../components/admin/AdminNotifications';
 
 export const AdminDashboard = () => {
   const { 
@@ -106,13 +109,16 @@ export const AdminDashboard = () => {
         </div>
 
         {/* Tab switchers */}
-        <div className="border border-slate-200 dark:border-navy-800 bg-white dark:bg-navy-900 rounded-2xl p-1 flex flex-wrap gap-1 w-full sm:w-auto">
+        <div className="border border-slate-200 dark:border-navy-800 bg-white dark:bg-navy-900 rounded-2xl p-1 flex overflow-x-auto whitespace-nowrap hide-scrollbar gap-1 w-full sm:w-auto">
           {[
             { id: 'overview', label: 'Platform Stats' },
             { id: 'revenue', label: 'Billing Setup' },
             { id: 'approvals', label: `Pending Approvals (${pendingJobs.length})` },
             { id: 'verification', label: 'Verifications' },
-            { id: 'monitoring', label: 'AI Monitoring' }
+            { id: 'monitoring', label: 'AI Monitoring' },
+            { id: 'offers', label: 'Promotional Offers' },
+            { id: 'upskilling', label: 'Upskilling Partners' },
+            { id: 'notifications', label: 'Notification Blaster' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -546,6 +552,10 @@ export const AdminDashboard = () => {
             </div>
           </motion.div>
         )}
+
+        {activeTab === 'offers' && <AdminOffers key="offers" />}
+        {activeTab === 'upskilling' && <AdminUpskilling key="upskilling" />}
+        {activeTab === 'notifications' && <AdminNotifications key="notifications" />}
       </AnimatePresence>
     </div>
   );

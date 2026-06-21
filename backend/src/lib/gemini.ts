@@ -122,7 +122,7 @@ export const isGeminiAvailable = (): boolean => {
 
 // ── Embedding Support for Ranking Engine ──────────────────────────────────
 
-const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
+const GEMINI_EMBEDDING_MODEL = "gemini-embedding-2";
 const GEMINI_EMBEDDING_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent`;
 
 export const generateEmbedding = async (text: string): Promise<number[]> => {
