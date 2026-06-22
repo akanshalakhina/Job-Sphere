@@ -3,8 +3,8 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import mongoSanitize from "express-mongo-sanitize";
-const xss = require("xss-clean");
+import { mongoSanitizeClean } from "./middlewares/mongoSanitize";
+import { xssClean } from "./middlewares/xss";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { connectDB, isDBConnected } from "./lib/mongodb";
@@ -39,8 +39,8 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-app.use(mongoSanitize());
-app.use(xss());
+app.use(mongoSanitizeClean());
+app.use(xssClean());
 
 app.use("/api", router);
 
